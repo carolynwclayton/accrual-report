@@ -74,6 +74,34 @@ assign(file_name, data, envir = .GlobalEnv)  # rename the object "data" to the u
 # # OPTION 2. Slightly slower and less flexible (i.e. can break if the offending line is not on line 2), but more readable. Uses readLines to read and evaluate all lines except line #2 (which contains "rm(list=ls())").
 # eval(parse(readLines(chosen_file)[-2]))
 
+# DATA CLEANING -----------------------------------------------------
+###REDO this with filter()
+# Split out the adverse events from visits_data
+adverse_events <- subset(visits_data, visits_data$redcap_event_name == "ongoing_forms")
+adverse_events <- adverse_events[,which(unlist(lapply(adverse_events, function(x)!all(is.na(x)))))]  # Keep columns where the there is at least one piece of data. The lapply is used to make the code run faster, because is.na makes a copy of the object, which for large objects can be a problem.
+adverse_events <- adverse_events[,which(unlist(lapply(adverse_events, function(x)!all(is.factor(x) & (x) == ""))))]  # Remove columns where factor variables are == "" in all rows.
+adverse_events <- select(adverse_events, -matches("redcap_event_name"))
+
+# Split out the screening visit (demographics) from visits_data
+screening_demos <- subset(visits_data, visits_data$redcap_event_name == "screening_visit")
+screening_demos <- screening_demos[,which(unlist(lapply(screening_demos, function(x)!all(is.na(x)))))]  # Keep columns where the there is at least one piece of data. The lapply is used to make the code run faster, because is.na makes a copy of the object, which for large objects can be a problem.
+screening_demos <- screening_demos[,which(unlist(lapply(screening_demos, function(x)!all(is.factor(x) & (x) == ""))))]  # Remove columns where factor variables are == "" in all rows.
+screening_demos <- select(screening_demos, -matches("redcap_event_name"))
+
+# Add a variable, race_cat, to screening_demos which is a combination of nih_race and nih_ethnicity
+screening_demos <- mutate(screening_demos, race_cat = paste(nih_race.factor, nih_ethnicity.factor))
+
+# Add a variable, cohort, to screening_demos which a combination of nih_race and nih_sex
+screening_demos <- mutate(screening_demos, cohort = paste(nih_race.factor, nih_sex.factor))
+
+# Sort the dataset first by pid, then by redcap_event_name
+example_data <- arrange(example_data, pid, redcap_event_name)
+
+# Rename redcap_event_name to visit_number
+example_data <- rename(example_data, visit_number = redcap_event_name)
+
+# SAVING THE DATA AND CLEANUP -----------------------------------------------------
+
 # Save Dataset as a .Rda file
 save(data, file = paste(file_name, ".Rda", sep = ""))
 
